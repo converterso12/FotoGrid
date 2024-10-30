@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Merger Tool</title>
+    <style>
+        /* Styles are the same as in previous example */
+        /* Basic Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        /* Form Styling */
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="datetime-local"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Loading Spinner */
+        #loading {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        /* Merged Image Display */
+        #merged-container {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #merged-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        #download-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        #download-link:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <h1>Photo Merger Tool</h1>
+
+    <!-- Firebase Configuration -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD21AniBt0GcuShvdrmeJR3lmdOlYhUEiU",
+            authDomain: "workrequest-8482a.firebaseapp.com",
+            databaseURL: "https://workrequest-8482a-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "workrequest-8482a",
+            storageBucket: "workrequest-8482a.appspot.com",
+            messagingSenderId: "230020602695",
+            appId: "1:230020602695:web:802e9f107a8987e532ca62"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+    </script>
+
+    <!-- Form Section -->
+    <form id="photoMergerForm">
+        <div class="form-group">
+         
+            <label for="location">Location :</label>
+    <select id="location">
+                <option value="Converter 4213">Converter 4213 Train 1</option>
+                <option value="Converter 4203"> Converter 4203 Train 2</option>
+                <option value="SO2 Blower">SO2 blower Room</option>
+    </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="time">Input Time</label>
+            <input type="datetime-local" id="time" name="time" required>
+        </div>
+
+        <div class="form-group">
+            <label for="before1">Foto Before 1</label>
+            <input type="file" id="before1" name="before1" accept="image/*" required>
+        </div>
+
+        <div class="form-group">
+            <label for="before2">Foto Before 2</label>
+            <input type="file" id="before2" name="before2" accept="image/*" required>
+        </div>
+
+        <div class="form-group">
+            <label for="after1">Foto After 1</label>
+            <input type="file" id="after1" name="after1" accept="image/*" required>
+        </div>
+
+        <div class="form-group">
+            <label for="after2">Foto After 2</label>
+            <input type="file" id="after2" name="after2" accept="image/*" required>
+        </div>
+
+        <button type="button" onclick="mergePhotos()">Submit</button>
+    </form>
+
+    <!-- Loading Spinner -->
+    <div id="loading">
+        <span>Loading...</span>
+    </div>
+
+    <!-- Merged Image Display -->
+    <div id="merged-container">
+        <p>Here is your merged photo:</p>
+        <canvas id="mergedCanvas" style="display: none;"></canvas>
+        <img id="merged-image" alt="Merged Image">
+        <a id="download-link" download="merged-photo.jpg">Download Merged Photo</a>
+    </div>
+
+    <script>
+        async function mergePhotos() {
+    const before1 = document.getElementById("before1").files[0];
+    const before2 = document.getElementById("before2").files[0];
+    const after1 = document.getElementById("after1").files[0];
+    const after2 = document.getElementById("after2").files[0];
+    const location = document.getElementById("location").value;
+const time = new Date(document.getElementById("time").value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const date = new Date(document.getElementById("time").value).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    if (!(before1 && before2 && after1 && after2)) {
+        alert("Please upload all images.");
+        return;
+    }
+
+    document.getElementById("loading").style.display = "flex";
+
+    // Fungsi untuk memuat dan mengubah ukuran gambar
+    const loadImage = (file) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = 1560;
+                canvas.height = 2080;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, 1560, 2080);
+                resolve(canvas);
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
+    const images = await Promise.all([loadImage(before1), loadImage(before2), loadImage(after1), loadImage(after2)]);
+    const canvas = document.getElementById("mergedCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Tentukan ukuran canvas sesuai dengan gambar yang telah diubah ukurannya
+    
+
+    
+            const titles = ["Before", "Before", "After", "After"]; // Sesuaikan dengan judul yang Anda butuhkan
+
+            const maxWidth = Math.max(images[0].width, images[1].width);
+            const maxHeight = Math.max(images[0].height, images[1].height);
+            canvas.width = 780 * 2;
+    canvas.height = 1040 * 2;
+
+    images.forEach((imgCanvas, index) => {
+        const x = (index % 2) * 780;
+        const y = Math.floor(index / 2) * 1040;
+        ctx.drawImage(imgCanvas, x, y, 780, 1040);
+        drawWatermark(ctx, x + 10, y + 870, titles[index], time, date, location);
+
+    // Panggil fungsi watermark dengan menambahkan titles sebagai parameter
+    drawWatermark(ctx, x + 10, y + maxHeight - 170, titles[index], time, date, location);
+});
+
+function drawWatermark(ctx, x, y, title, time, date, location) {
+    // Kotak besar latar belakang watermark
+    ctx.fillStyle = "#3A2E87";
+    ctx.fillRect(x, y, 250, 150);
+
+    // Logo atau ikon
+    ctx.fillStyle = "#FFC700";
+    ctx.font = "bold 35px Arial";
+    ctx.fillText("🛡", x + 10, y + 40);
+
+    // Menggunakan parameter `title` untuk teks judul
+    ctx.fillStyle = "#FFC700";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText(title, x + 60, y + 30);
+
+    // Teks "Catatan Kerja" dengan font putih
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = " bold 18px Arial";
+    ctx.fillText("Housekeeping", x + 60, y + 50);
+
+    // Garis kuning horizontal
+    ctx.fillStyle = "#FFC700";
+    ctx.fillRect(x+ 10, y + 60, 230, 2);
+
+    // Teks waktu
+    ctx.fillStyle = "#FFC700";
+    ctx.font = "bold 28px Arial";
+    ctx.fillText(date, x + 10, y + 100);
+
+    // Teks lokasi
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 20px Arial";
+    ctx.fillText("Section:", x + 10, y + 130);
+    ctx.fillText(location, x + 90, y + 130);
+}
+
+            const mergedImageURL = canvas.toDataURL("image/jpeg", 1.0);
+    const mergedImage = document.getElementById("merged-image");
+    mergedImage.src = mergedImageURL;
+    document.getElementById("merged-container").style.display = "block";
+    mergedImage.style.display = "block";
+    document.getElementById("loading").style.display = "none";
+
+    const downloadLink = document.getElementById("download-link");
+    downloadLink.href = mergedImageURL;
+}
+    </script>
+</body>
+</html>
